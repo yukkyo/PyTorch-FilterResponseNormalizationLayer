@@ -46,13 +46,13 @@ class FRN(nn.Module):
         self.bias = nn.parameter.Parameter(
             torch.Tensor(1, num_features, 1, 1), requires_grad=True)
         self.eps = nn.parameter.Parameter(
-            torch.tensor(init_eps), requires_grad=True)
+            torch.Tensor(1), requires_grad=True)
         self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.ones_(self.weight)
         nn.init.zeros_(self.bias)
-        nn.init.constant_(self.eps, self.init_eps)
+        nn.init.zeros_(self.eps)
 
     def extra_repr(self):
         return 'num_features={num_features}, eps={init_eps}'.format(**self.__dict__)
@@ -72,7 +72,7 @@ class FRN(nn.Module):
         nu2 = (x ** 2).mean(dim=[2, 3], keepdim=True)
 
         # Perform FRN.
-        x = x * (nu2 + self.eps.abs())**(-0.5)
+        x = x * (nu2 + self.init_eps + self.eps.abs())**(-0.5)
 
         # Scale and Bias
         x = self.weight * x + self.bias
