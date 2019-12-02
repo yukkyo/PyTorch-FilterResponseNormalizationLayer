@@ -64,6 +64,8 @@ class FRN(nn.Module):
         TensorFlow code
             nu2 = tf.reduce_mean(tf.square(x), axis=[1, 2], keepdims=True)
             x = x * tf.rsqrt(nu2 + tf.abs(eps))
+
+            # This Code include TLU function max(y, tau)
             return tf.maximum(gamma * x + beta, tau)
         """
         # Compute the mean norm of activations per channel.
