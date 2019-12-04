@@ -1,28 +1,20 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 from torch.nn.modules.batchnorm import BatchNorm2d
 from torch.nn import ReLU, LeakyReLU
 
 
 class TLU(nn.Module):
-    def __init__(self, inplace=True):
-        """
-        max(y, tau) = max(y - tau, 0) + tau = ReLU(y - tau) + tau
-        """
+    def __init__(self):
+        """max(y, tau) = max(y - tau, 0) + tau = ReLU(y - tau) + tau"""
         super(TLU, self).__init__()
-        self.inplace = inplace
         self.tau = nn.parameter.Parameter(torch.zeros(1), requires_grad=True)
 
     def reset_parameters(self):
         nn.init.zeros_(self.tau)
 
     def forward(self, x):
-        return F.relu(x - self.tau, inplace=self.inplace) + self.tau
-
-    def extra_repr(self):
-        inplace_str = 'inplace=True' if self.inplace else ''
-        return inplace_str
+        return torch.max(x, self.tau)
 
 
 class FRN(nn.Module):
@@ -34,7 +26,6 @@ class FRN(nn.Module):
             Variables of shape [1, 1, 1, C]. if TensorFlow
             Variables of shape [1, C, 1, 1]. if PyTorch
         eps: A scalar constant or learnable variable.
-
         """
         super(FRN, self).__init__()
 
@@ -52,7 +43,7 @@ class FRN(nn.Module):
     def reset_parameters(self):
         nn.init.ones_(self.weight)
         nn.init.zeros_(self.bias)
-        nn.init.zeros_(self.eps)
+        nn.init.constant_(self.eps, self.init_eps)
 
     def extra_repr(self):
         return 'num_features={num_features}, eps={init_eps}'.format(**self.__dict__)
@@ -69,10 +60,10 @@ class FRN(nn.Module):
             return tf.maximum(gamma * x + beta, tau)
         """
         # Compute the mean norm of activations per channel.
-        nu2 = (x ** 2).mean(dim=[2, 3], keepdim=True)
+        nu2 = x.pow(2).mean(dim=[2, 3], keepdim=True)
 
         # Perform FRN.
-        x = x * (nu2 + self.init_eps + self.eps.abs())**(-0.5)
+        x = x * torch.rsqrt(nu2 + self.eps.abs())
 
         # Scale and Bias
         x = self.weight * x + self.bias
@@ -98,7 +89,7 @@ def bnrelu_to_frn(module):
                 raise NotImplementedError()
 
             # Convert ReLU to TLU
-            mod.add_module(name, TLU(inplace=child.inplace))
+            mod.add_module(name, TLU())
         else:
             mod.add_module(name, bnrelu_to_frn(child))
 
