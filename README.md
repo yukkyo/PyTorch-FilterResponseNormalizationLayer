@@ -1,9 +1,9 @@
-# PyTorch implementation Filter Response Normalization Layer(FRN)
+## PyTorch implementation Filter Response Normalization Layer(FRN)
 
 [\[1911\.09737\] Filter Response Normalization Layer: Eliminating Batch Dependence in the Training of Deep Neural Networks](https://arxiv.org/abs/1911.09737)
 
 
-## How to convert your `BatchNorm2d + ReLU` to `FRN + TLU`
+### How to convert your `BatchNorm2d + ReLU` to `FRN + TLU`
 
 `bnrelu_to_frn()` is function for converting "BatchNorm2d + ReLU(or LeakyReLU)" to "FRN + TLU".  
 So the ReLUs which previous layer is not BatchNorm2d, is not converted.  
@@ -30,7 +30,7 @@ This dataset contains 49 artists and their pictures.
 In this experiment, we classify artist by picture.
 
 
-## 1.0 Assumed libraries
+### 1.0 Assumed libraries
 
 - torch==1.3.1
 - torchvision==0.4.2
