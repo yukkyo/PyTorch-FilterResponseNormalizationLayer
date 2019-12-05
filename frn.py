@@ -97,3 +97,23 @@ def bnrelu_to_frn(module):
         before_child = child
         is_before_bn = isinstance(child, BatchNorm2d)
     return mod
+
+
+def relu_to_tlu(module):
+    mod = module
+    for name, child in module.named_children():
+        if isinstance(child, (ReLU, LeakyReLU)):
+            mod.add_module(name, TLU())
+        else:
+            mod.add_module(name, relu_to_tlu(child))
+    return mod
+
+
+def bn_to_frn(module):
+    mod = module
+    for name, child in module.named_children():
+        if isinstance(child, BatchNorm2d):
+            mod.add_module(name, FRN(num_features=child.num_features))
+        else:
+            mod.add_module(name, bn_to_frn(child))
+    return mod
