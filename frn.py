@@ -5,20 +5,25 @@ from torch.nn import ReLU, LeakyReLU
 
 
 class TLU(nn.Module):
-    def __init__(self):
+    def __init__(self, num_features):
         """max(y, tau) = max(y - tau, 0) + tau = ReLU(y - tau) + tau"""
         super(TLU, self).__init__()
-        self.tau = nn.parameter.Parameter(torch.zeros(1), requires_grad=True)
+        self.num_features = num_features
+        self.tau = nn.parameter.Parameter(
+            torch.Tensor(1, num_features, 1, 1), requires_grad=True)
 
     def reset_parameters(self):
         nn.init.zeros_(self.tau)
+
+    def extra_repr(self):
+        return 'num_features={num_features}'.format(**self.__dict__)
 
     def forward(self, x):
         return torch.max(x, self.tau)
 
 
 class FRN(nn.Module):
-    def __init__(self, num_features, init_eps=1e-6):
+    def __init__(self, num_features, eps=1e-6, is_eps_leanable=False):
         """
         weight = gamma, bias = beta
 
@@ -30,20 +35,24 @@ class FRN(nn.Module):
         super(FRN, self).__init__()
 
         self.num_features = num_features
-        self.init_eps = init_eps
+        self.init_eps = eps
+        self.is_eps_leanable = is_eps_leanable
 
         self.weight = nn.parameter.Parameter(
             torch.Tensor(1, num_features, 1, 1), requires_grad=True)
         self.bias = nn.parameter.Parameter(
             torch.Tensor(1, num_features, 1, 1), requires_grad=True)
-        self.eps = nn.parameter.Parameter(
-            torch.Tensor(1), requires_grad=True)
+        if is_eps_leanable:
+            self.eps = nn.parameter.Parameter(torch.Tensor(1), requires_grad=True)
+        else:
+            self.eps = torch.Tensor([eps])
         self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.ones_(self.weight)
         nn.init.zeros_(self.bias)
-        nn.init.constant_(self.eps, self.init_eps)
+        if self.is_eps_leanable:
+            nn.init.constant_(self.eps, self.init_eps)
 
     def extra_repr(self):
         return 'num_features={num_features}, eps={init_eps}'.format(**self.__dict__)
@@ -89,31 +98,11 @@ def bnrelu_to_frn(module):
                 raise NotImplementedError()
 
             # Convert ReLU to TLU
-            mod.add_module(name, TLU())
+            mod.add_module(name, TLU(num_features=before_child.num_features))
         else:
             mod.add_module(name, bnrelu_to_frn(child))
 
         before_name = name
         before_child = child
         is_before_bn = isinstance(child, BatchNorm2d)
-    return mod
-
-
-def relu_to_tlu(module):
-    mod = module
-    for name, child in module.named_children():
-        if isinstance(child, (ReLU, LeakyReLU)):
-            mod.add_module(name, TLU())
-        else:
-            mod.add_module(name, relu_to_tlu(child))
-    return mod
-
-
-def bn_to_frn(module):
-    mod = module
-    for name, child in module.named_children():
-        if isinstance(child, BatchNorm2d):
-            mod.add_module(name, FRN(num_features=child.num_features))
-        else:
-            mod.add_module(name, bn_to_frn(child))
     return mod

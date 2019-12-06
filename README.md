@@ -87,7 +87,6 @@ $ python train_cls.py --use-pretrain --model se_resnext50_32x4d --fp16
 $ python train_cls.py --use-pretrain --model se_resnext50_32x4d --frn
 ```
 
-### 1.3 Check results
+### 1.3 Results
 
-
-## 2. Experiment(Segmentation) -> Coming soon...
+Coming soon...
