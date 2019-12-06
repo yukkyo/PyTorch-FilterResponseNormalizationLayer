@@ -25,15 +25,6 @@ model_seg = smp.Unet('resnet18', classes=3, activation='softmax')
 model_seg = bnrelu_to_frn(model_seg)
 ```
 
-### 0.2 How to change all your ReLUs to TLUs
-
-Use `relu_to_tlu()`
-
-### 0.3 How to change all your BatchNorm2ds to FRNs
-
-Use `bn_to_frn()`
-
-
 ## 1. Experiment(Classification)
 
 We use [Best Artworks of All Time \| Kaggle](https://www.kaggle.com/ikarus777/best-artworks-of-all-time) dataset.
