@@ -106,3 +106,88 @@ def bnrelu_to_frn(module):
         before_child = child
         is_before_bn = isinstance(child, BatchNorm2d)
     return mod
+
+
+def convert(module, flag_name):
+    mod = module
+    before_ch = None
+    for name, child in module.named_children():
+        if hasattr(child, flag_name) and getattr(child, flag_name):
+            if isinstance(child, BatchNorm2d):
+                before_ch = child.num_features
+                mod.add_module(name, FRN(num_features=child.num_features))
+            # TODO bn is no good...
+            if isinstance(child, (ReLU, LeakyReLU)):
+                mod.add_module(name, TLU(num_features=before_ch))
+        else:
+            mod.add_module(name, convert(child, flag_name))
+    return mod
+
+
+def remove_flags(module, flag_name):
+    mod = module
+    for name, child in module.named_children():
+        if hasattr(child, 'is_convert_frn'):
+            delattr(child, flag_name)
+            mod.add_module(name, remove_flags(child, flag_name))
+        else:
+            mod.add_module(name, remove_flags(child, flag_name))
+    return mod
+
+
+def bnrelu_to_frn2(model, input_size=(3, 128, 128), batch_size=2, flag_name='is_convert_frn'):
+    forard_hooks = list()
+    backward_hooks = list()
+
+    is_before_bn = [False]
+
+    def register_forward_hook(module):
+        def hook(self, input, output):
+            if isinstance(module, (nn.Sequential, nn.ModuleList)) or (module == model):
+                is_before_bn.append(False)
+                return
+
+            # input and output is required in hook def
+            is_converted = is_before_bn[-1] and isinstance(self, (ReLU, LeakyReLU))
+            if is_converted:
+                setattr(self, flag_name, True)
+            is_before_bn.append(isinstance(self, BatchNorm2d))
+        forard_hooks.append(module.register_forward_hook(hook))
+
+    is_before_relu = [False]
+
+    def register_backward_hook(module):
+        def hook(self, input, output):
+            if isinstance(module, (nn.Sequential, nn.ModuleList)) or (module == model):
+                is_before_relu.append(False)
+                return
+            is_converted = is_before_relu[-1] and isinstance(self, BatchNorm2d)
+            if is_converted:
+                setattr(self, flag_name, True)
+            is_before_relu.append(isinstance(self, (ReLU, LeakyReLU)))
+        backward_hooks.append(module.register_backward_hook(hook))
+
+    # multiple inputs to the network
+    if isinstance(input_size, tuple):
+        input_size = [input_size]
+
+    # batch_size of 2 for batchnorm
+    x = [torch.rand(batch_size, *in_size) for in_size in input_size]
+
+    # register hook
+    model.apply(register_forward_hook)
+    model.apply(register_backward_hook)
+
+    # make a forward pass
+    output = model(*x)
+    output.sum().backward()  # Raw output is not enabled to use backward()
+
+    # remove these hooks
+    for h in forard_hooks:
+        h.remove()
+    for h in backward_hooks:
+        h.remove()
+
+    model = convert(model, flag_name=flag_name)
+    model = remove_flags(model, flag_name=flag_name)
+    return model
