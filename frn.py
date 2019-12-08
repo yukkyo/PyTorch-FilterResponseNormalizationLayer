@@ -45,7 +45,7 @@ class FRN(nn.Module):
         if is_eps_leanable:
             self.eps = nn.parameter.Parameter(torch.Tensor(1), requires_grad=True)
         else:
-            self.eps = torch.Tensor([eps])
+            self.register_buffer('eps', torch.Tensor([eps]))
         self.reset_parameters()
 
     def reset_parameters(self):
