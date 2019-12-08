@@ -1,7 +1,4 @@
 """
-Codes from
-https://github.com/Cadene/pretrained-models.pytorch/blob/master/pretrainedmodels/models/senet.py
-
 ResNet code gently borrowed from
 https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 """
@@ -12,10 +9,8 @@ import math
 import torch.nn as nn
 from torch.utils import model_zoo
 
-from frn import FRN, TLU
-
-__all__ = ['SENet', 'senet154_frn', 'se_resnet50_frn', 'se_resnet101_frn', 'se_resnet152_frn',
-           'se_resnext50_32x4d_frn', 'se_resnext101_32x4d_frn']
+__all__ = ['SENet', 'senet154', 'se_resnet50', 'se_resnet101', 'se_resnet152',
+           'se_resnext50_32x4d', 'se_resnext101_32x4d']
 
 pretrained_settings = {
     'senet154': {
@@ -117,21 +112,21 @@ class Bottleneck(nn.Module):
         residual = x
 
         out = self.conv1(x)
-        out = self.frn1(out)
-        out = self.tlu1(out)
+        out = self.bn1(out)
+        out = self.relu(out)
 
         out = self.conv2(out)
-        out = self.frn2(out)
-        out = self.tlu2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
 
         out = self.conv3(out)
-        out = self.frn3(out)
+        out = self.bn3(out)
 
         if self.downsample is not None:
             residual = self.downsample(x)
 
         out = self.se_module(out) + residual
-        out = self.tlu3(out)
+        out = self.relu(out)
 
         return out
 
@@ -146,17 +141,15 @@ class SEBottleneck(Bottleneck):
                  downsample=None):
         super(SEBottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes * 2, kernel_size=1, bias=False)
-        self.frn1 = FRN(num_features=planes * 2)
-        self.tlu1 = TLU(num_features=planes * 2)
+        self.bn1 = nn.BatchNorm2d(planes * 2)
         self.conv2 = nn.Conv2d(planes * 2, planes * 4, kernel_size=3,
                                stride=stride, padding=1, groups=groups,
                                bias=False)
-        self.frn2 = FRN(num_features=planes * 4)
-        self.tlu2 = TLU(num_features=planes * 4)
+        self.bn2 = nn.BatchNorm2d(planes * 4)
         self.conv3 = nn.Conv2d(planes * 4, planes * 4, kernel_size=1,
                                bias=False)
-        self.frn3 = FRN(num_features=planes * 4)
-        self.tlu3 = TLU(num_features=planes * 4)
+        self.bn3 = nn.BatchNorm2d(planes * 4)
+        self.relu = nn.ReLU(inplace=True)
         self.se_module = SEModule(planes * 4, reduction=reduction)
         self.downsample = downsample
         self.stride = stride
@@ -175,15 +168,13 @@ class SEResNetBottleneck(Bottleneck):
         super(SEResNetBottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False,
                                stride=stride)
-        self.frn1 = FRN(num_features=planes)
-        self.tlu1 = TLU(num_features=planes)
+        self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, padding=1,
                                groups=groups, bias=False)
-        self.frn2 = FRN(num_features=planes)
-        self.tlu2 = TLU(num_features=planes)
+        self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.frn3 = FRN(num_features=planes * 4)
-        self.tlu3 = TLU(num_features=planes * 4)
+        self.bn3 = nn.BatchNorm2d(planes * 4)
+        self.relu = nn.ReLU(inplace=True)
         self.se_module = SEModule(planes * 4, reduction=reduction)
         self.downsample = downsample
         self.stride = stride
@@ -201,15 +192,13 @@ class SEResNeXtBottleneck(Bottleneck):
         width = math.floor(planes * (base_width / 64)) * groups
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=1, bias=False,
                                stride=1)
-        self.frn1 = FRN(num_features=width)
-        self.tlu1 = TLU(num_features=width)
+        self.bn1 = nn.BatchNorm2d(width)
         self.conv2 = nn.Conv2d(width, width, kernel_size=3, stride=stride,
                                padding=1, groups=groups, bias=False)
-        self.frn2 = FRN(num_features=width)
-        self.tlu2 = TLU(num_features=width)
+        self.bn2 = nn.BatchNorm2d(width)
         self.conv3 = nn.Conv2d(width, planes * 4, kernel_size=1, bias=False)
-        self.frn3 = FRN(num_features=planes * 4)
-        self.tlu3 = TLU(num_features=planes * 4)
+        self.bn3 = nn.BatchNorm2d(planes * 4)
+        self.relu = nn.ReLU(inplace=True)
         self.se_module = SEModule(planes * 4, reduction=reduction)
         self.downsample = downsample
         self.stride = stride
@@ -368,7 +357,6 @@ class SENet(nn.Module):
         if self.dropout is not None:
             x = self.dropout(x)
         x = x.view(x.size(0), -1)
-        print(f'x.size(): {x.size()}')
         x = self.last_linear(x)
         return x
 
@@ -377,23 +365,12 @@ class SENet(nn.Module):
         x = self.logits(x)
         return x
 
-    def load_my_state_dict(self, state_dict):
-        own_state = self.state_dict()
-        for name, param in state_dict.items():
-            if name not in own_state:
-                continue
-            if isinstance(param, nn.parameter.Parameter):
-                # backwards compatibility for serialized parameters
-                param = param.data
-            own_state[name].copy_(param)
-
 
 def initialize_pretrained_model(model, num_classes, settings):
     assert num_classes == settings['num_classes'], \
         'num_classes should be {}, but is {}'.format(
             settings['num_classes'], num_classes)
-    # Load params if exists
-    model.load_my_state_dict(model_zoo.load_url(settings['url']))
+    model.load_state_dict(model_zoo.load_url(settings['url']))
     model.input_space = settings['input_space']
     model.input_size = settings['input_size']
     model.input_range = settings['input_range']
@@ -401,7 +378,7 @@ def initialize_pretrained_model(model, num_classes, settings):
     model.std = settings['std']
 
 
-def senet154_frn(num_classes=1000, pretrained='imagenet'):
+def senet154(num_classes=1000, pretrained='imagenet'):
     model = SENet(SEBottleneck, [3, 8, 36, 3], groups=64, reduction=16,
                   dropout_p=0.2, num_classes=num_classes)
     if pretrained is not None:
@@ -410,7 +387,7 @@ def senet154_frn(num_classes=1000, pretrained='imagenet'):
     return model
 
 
-def se_resnet50_frn(num_classes=1000, pretrained='imagenet'):
+def se_resnet50(num_classes=1000, pretrained='imagenet'):
     model = SENet(SEResNetBottleneck, [3, 4, 6, 3], groups=1, reduction=16,
                   dropout_p=None, inplanes=64, input_3x3=False,
                   downsample_kernel_size=1, downsample_padding=0,
@@ -421,7 +398,7 @@ def se_resnet50_frn(num_classes=1000, pretrained='imagenet'):
     return model
 
 
-def se_resnet101_frn(num_classes=1000, pretrained='imagenet'):
+def se_resnet101(num_classes=1000, pretrained='imagenet'):
     model = SENet(SEResNetBottleneck, [3, 4, 23, 3], groups=1, reduction=16,
                   dropout_p=None, inplanes=64, input_3x3=False,
                   downsample_kernel_size=1, downsample_padding=0,
@@ -432,7 +409,7 @@ def se_resnet101_frn(num_classes=1000, pretrained='imagenet'):
     return model
 
 
-def se_resnet152_frn(num_classes=1000, pretrained='imagenet'):
+def se_resnet152(num_classes=1000, pretrained='imagenet'):
     model = SENet(SEResNetBottleneck, [3, 8, 36, 3], groups=1, reduction=16,
                   dropout_p=None, inplanes=64, input_3x3=False,
                   downsample_kernel_size=1, downsample_padding=0,
@@ -443,7 +420,7 @@ def se_resnet152_frn(num_classes=1000, pretrained='imagenet'):
     return model
 
 
-def se_resnext50_32x4d_frn(num_classes=1000, pretrained='imagenet'):
+def se_resnext50_32x4d(num_classes=1000, pretrained='imagenet'):
     model = SENet(SEResNeXtBottleneck, [3, 4, 6, 3], groups=32, reduction=16,
                   dropout_p=None, inplanes=64, input_3x3=False,
                   downsample_kernel_size=1, downsample_padding=0,
@@ -454,7 +431,7 @@ def se_resnext50_32x4d_frn(num_classes=1000, pretrained='imagenet'):
     return model
 
 
-def se_resnext101_32x4d_frn(num_classes=1000, pretrained='imagenet'):
+def se_resnext101_32x4d(num_classes=1000, pretrained='imagenet'):
     model = SENet(SEResNeXtBottleneck, [3, 4, 23, 3], groups=32, reduction=16,
                   dropout_p=None, inplanes=64, input_3x3=False,
                   downsample_kernel_size=1, downsample_padding=0,
@@ -467,7 +444,7 @@ def se_resnext101_32x4d_frn(num_classes=1000, pretrained='imagenet'):
 
 def test():
     from torchsummary import summary
-    model = se_resnext50_32x4d_frn()
+    model = se_resnext50_32x4d()
     model.last_linear = nn.Linear(512 * 16, 2)
     summary(model, (3, 256, 256))
 

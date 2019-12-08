@@ -4,7 +4,6 @@ import collections
 import numpy as np
 import torch
 import torch.nn as nn
-from cnn_finetune import make_model
 
 import catalyst
 from catalyst.utils.dataset import create_dataset, create_dataframe, prepare_dataset_labeling, split_dataframe
@@ -14,7 +13,8 @@ from catalyst.dl import SupervisedRunner
 from catalyst.dl.callbacks import AccuracyCallback, F1ScoreCallback
 from catalyst.data.reader import ImageReader, ScalarReader, ReaderCompose
 
-from frn import bnrelu_to_frn
+from senet import se_resnext50_32x4d
+from senet_frn import se_resnext50_32x4d_frn
 from augmentation import get_transform
 
 
@@ -117,16 +117,14 @@ def get_parse():
 
     arg('--gpu', type=str, default='0',
         help='Enable to use specific gpu. You can select multi-gpu(ex. 0,1, if "", CPU is used')
-    arg('--model', type=str, default='resnet34', help='resnet18, resnet34, se_resnext50_32x4d')
     arg('--frn', action='store_true', help='use FRN if True')
     arg('--seed', type=int, default=42)
 
     arg('--data-rootdir', type=str, default='./input/artworks/images/images', help='log dir')
     arg('--num-epochs', type=int, default=20)
-    arg('--batch-size', type=int, default=32)
+    arg('--batch-size', type=int, default=16)
     arg('--num-workers', type=int, default=8)
     arg('--img-size', type=int, default=384)
-    arg('--use-pretrain', action='store_true', help='use pre-trained weight')
     arg('--fp16', action='store_true', help='use FP16 if True')
 
     return parser.parse_args()
@@ -155,20 +153,16 @@ def main():
     )
 
     print('Make model')
-    model = make_model(
-        model_name=args.model,
-        num_classes=num_class,
-        pretrained=args.use_pretrain,
-        input_size=(args.img_size, args.img_size),
-        dropout_p=0.2
-    )
     if args.frn:
-        print(f'Use FRN + TLU instead of BN2d + ReLU')
-        model = bnrelu_to_frn(model)
+        model = se_resnext50_32x4d_frn()
+    else:
+        model = se_resnext50_32x4d()
+    model.last_linear = nn.Linear(512 * 16, num_class)
 
+    print('Get optimizer and scheduler')
+    # learning rate for FRN is very very sensitive !!!
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4 if args.frn else 3e-4)
-
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer=optimizer,
         T_max=args.num_epochs,
@@ -177,7 +171,7 @@ def main():
     )
 
     log_base = './output/cls'
-    dir_name = f'{args.model}_frn_{args.frn}_bs_{args.batch_size}_fp16_{args.fp16}_pretrain_{args.use_pretrain}'
+    dir_name = f'seresnext50{"_frn" if args.frn else ""}_bs_{args.batch_size}_fp16_{args.fp16}'
 
     print('Start training...')
     runner = SupervisedRunner(device=catalyst.utils.get_device())

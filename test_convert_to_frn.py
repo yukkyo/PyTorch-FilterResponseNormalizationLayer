@@ -1,50 +1,21 @@
 import torch
-import torchvision.models as models
-import segmentation_models_pytorch as smp
 from torchsummary import summary
 
-from frn import bnrelu_to_frn
+from senet import se_resnext50_32x4d
+from senet_frn import se_resnext50_32x4d_frn
 
 
 def test_clsmodel():
-    model = models.resnet18(pretrained=False)
+    # Base Model
+    model = se_resnext50_32x4d(pretrained=None)
+    model.last_linear = torch.nn.Linear(512 * 16, 2)
+    summary(model, (3, 256, 256), batch_size=2)
 
-    # Before model
-    summary(model, (3, 128, 128), batch_size=2)
-
-    # After model
-    model = bnrelu_to_frn(model)
-    summary(model, (3, 128, 128), batch_size=2)
-
-
-def test_segmodel():
-    model = smp.Unet('resnet18', classes=3, activation='softmax')
-
-    print('*'*30)
-    print(f'before_model: \n{model}')
-    print('*'*30)
-
-    x = torch.rand(2, 3, 128, 128)
-    output = model(x)
-    print(f'input.size(): {x.size()}')
-    print(f'output.size(): {output.size()}')
-
-    # Convert model
-    model = bnrelu_to_frn(model)
-    print('*'*30)
-    print(f'after_model: \n{model}')
-    print('*'*30)
-    output = model(x)
-    print(f'input.size(): {x.size()}')
-    print(f'output.size(): {output.size()}')
-
-
-def test(cls=True):
-    if cls:
-        test_clsmodel()
-    else:
-        test_segmodel()
+    # Use FRN Model
+    model = se_resnext50_32x4d_frn(pretrained=None)
+    model.last_linear = torch.nn.Linear(512 * 16, 2)
+    summary(model, (3, 256, 256), batch_size=2)
 
 
 if __name__ == '__main__':
-    test(cls=False)
+    test_clsmodel()
