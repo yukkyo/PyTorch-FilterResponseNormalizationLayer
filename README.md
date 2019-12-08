@@ -23,6 +23,8 @@ In this experiment, we classify artist by picture.
 - torch==1.3.1
 - catalyst==19.11.6
 - albumentations==0.4.3
+- [NVIDIA/apex](https://github.com/NVIDIA/apex)
+  - If you use `--fp16` option
 
 ### 1.1 Get dataset
 
@@ -53,13 +55,14 @@ input
 
 ### 1.2 Train(and Valid)
 
-#### Compare pre-train or not
+Use `--fp16` with `--frn`, gradient is underflow. So I removed this option when `--frn`
 
-FRN with FP16 is not worked now...
+**Caution**
+FRN model outputs NaN loss value...
 
 ```bash
 $ python train_cls.py --fp16
-$ python train_cls.py --frn --fp16
+$ python train_cls.py --frn
 ```
 
 ### 1.3 Results

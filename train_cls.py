@@ -73,7 +73,7 @@ def get_loader(phase, dataset, open_fn, batch_size, num_workers, img_size):
         open_fn=open_fn,
         dict_transform=transforms_fn,
         shuffle=(phase == 'train'),
-        drop_last=(phase == 'train'),
+        drop_last=True,
         batch_size=batch_size,
         num_workers=num_workers,
         sampler=None
@@ -122,7 +122,7 @@ def get_parse():
     arg('--num-epochs', type=int, default=20)
     arg('--batch-size', type=int, default=16)
     arg('--num-workers', type=int, default=8)
-    arg('--img-size', type=int, default=384)
+    arg('--img-size', type=int, default=256)
     arg('--fp16', action='store_true', help='use FP16 if True')
 
     return parser.parse_args()
@@ -151,15 +151,16 @@ def main():
 
     print('Make model')
     if args.frn:
-        model = se_resnext50_32x4d_frn()
+        model = se_resnext50_32x4d_frn(pretrained=None)
+        model.last_linear = nn.Linear(512 * 16, num_class)
     else:
         model = se_resnext50_32x4d()
-    model.last_linear = nn.Linear(73728, num_class)
+        model.last_linear = nn.Linear(512 * 16, num_class)
 
     print('Get optimizer and scheduler')
     # learning rate for FRN is very very sensitive !!!
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4 if args.frn else 3e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5 if args.frn else 3e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer=optimizer,
         T_max=args.num_epochs,
