@@ -115,8 +115,6 @@ def get_parse():
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
 
-    arg('--gpu', type=str, default='0',
-        help='Enable to use specific gpu. You can select multi-gpu(ex. 0,1, if "", CPU is used')
     arg('--frn', action='store_true', help='use FRN if True')
     arg('--seed', type=int, default=42)
 
@@ -132,7 +130,6 @@ def get_parse():
 
 def main():
     args = get_parse()
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     catalyst.utils.set_global_seed(args.seed)
     catalyst.utils.prepare_cudnn(deterministic=True)
 
