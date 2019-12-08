@@ -6,24 +6,10 @@ PyTorch implementation of Filter Response Normalization Layer(FRN)
 
 ## 0. How to apply FRN to your model
 
-### 0.1 How to convert your `BatchNorm2d + ReLU` to `FRN + TLU`
+Add your own FRN and TLU.
+For now, it is difficult to change easily with functions.
+(Because many models use the same ReLU in various places.)
 
-`bnrelu_to_frn()` is function for converting "BatchNorm2d + ReLU(or LeakyReLU)" to "FRN + TLU".  
-So the ReLUs which previous layer is not BatchNorm2d, is not converted. Similarly for BatchNorm2d.
-
-```python3
-from frn import bnrelu_to_frn
-
-# Classification example
-import torchvision.models as models
-model_cls = models.resnet18(pretrained=False)
-model_cls = bnrelu_to_frn(model_cls)
-
-# Segmentation example
-import segmentation_models_pytorch as smp
-model_seg = smp.Unet('resnet18', classes=3, activation='softmax')
-model_seg = bnrelu_to_frn(model_seg)
-```
 
 ## 1. Experiment(Classification)
 
@@ -35,8 +21,6 @@ In this experiment, we classify artist by picture.
 ### 1.0 Assumed libraries
 
 - torch==1.3.1
-- torchvision==0.4.2
-- cnn-finetune==0.6.0
 - catalyst==19.11.6
 - albumentations==0.4.3
 
@@ -74,8 +58,8 @@ input
 FRN with FP16 is not worked now...
 
 ```bash
-$ python train_cls.py --use-pretrain --model se_resnext50_32x4d --fp16
-$ python train_cls.py --use-pretrain --model se_resnext50_32x4d --frn
+$ python train_cls.py --fp16
+$ python train_cls.py --frn --fp16
 ```
 
 ### 1.3 Results
