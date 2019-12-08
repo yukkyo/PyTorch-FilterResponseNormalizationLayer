@@ -154,7 +154,7 @@ def main():
         model = se_resnext50_32x4d_frn()
     else:
         model = se_resnext50_32x4d()
-    model.last_linear = nn.Linear(512 * 16, num_class)
+    model.last_linear = nn.Linear(73728, num_class)
 
     print('Get optimizer and scheduler')
     # learning rate for FRN is very very sensitive !!!
