@@ -368,7 +368,6 @@ class SENet(nn.Module):
         if self.dropout is not None:
             x = self.dropout(x)
         x = x.view(x.size(0), -1)
-        print(f'x.size(): {x.size()}')
         x = self.last_linear(x)
         return x
 
