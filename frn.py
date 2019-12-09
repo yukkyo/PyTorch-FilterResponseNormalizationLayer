@@ -11,6 +11,7 @@ class TLU(nn.Module):
         self.num_features = num_features
         self.tau = nn.parameter.Parameter(
             torch.Tensor(1, num_features, 1, 1), requires_grad=True)
+        self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.zeros_(self.tau)
