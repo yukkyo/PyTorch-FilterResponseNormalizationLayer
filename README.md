@@ -55,16 +55,10 @@ input
 
 ### 1.2 Train(and Valid)
 
-Use `--fp16` with `--frn`, gradient is underflow. So I removed this option when `--frn`
-
-**Caution**
-FRN model outputs NaN loss value...
+You can use `--fp16` if you installed `nvidia/apex`.
+But FRN is not tuned for FP16, you should turn off `--fp16` when use `--frn`.
 
 ```bash
 $ python train_cls.py --fp16
 $ python train_cls.py --frn
 ```
-
-### 1.3 Results
-
-Coming soon...

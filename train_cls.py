@@ -10,7 +10,7 @@ from catalyst.utils.dataset import create_dataset, create_dataframe, prepare_dat
 from catalyst.utils.pandas import map_dataframe
 from catalyst.dl import utils as dutil
 from catalyst.dl import SupervisedRunner
-from catalyst.dl.callbacks import AccuracyCallback, F1ScoreCallback
+from catalyst.dl.callbacks import AccuracyCallback
 from catalyst.data.reader import ImageReader, ScalarReader, ReaderCompose
 
 from senet import se_resnext50_32x4d
@@ -102,11 +102,7 @@ def get_train_valid_loaders(df, test_size, random_state, data_root,
 
 def get_callbacks(num_classes):
     callbacks = [
-        AccuracyCallback(num_classes=num_classes),
-        F1ScoreCallback(
-            input_key="targets_one_hot",
-            activation="Softmax"
-        )
+        AccuracyCallback(num_classes=num_classes, accuracy_args=[1, 3]),
     ]
     return callbacks
 
@@ -120,7 +116,7 @@ def get_parse():
 
     arg('--data-rootdir', type=str, default='./input/artworks/images/images', help='log dir')
     arg('--num-epochs', type=int, default=20)
-    arg('--batch-size', type=int, default=16)
+    arg('--batch-size', type=int, default=64)
     arg('--num-workers', type=int, default=8)
     arg('--img-size', type=int, default=256)
     arg('--fp16', action='store_true', help='use FP16 if True')
@@ -160,11 +156,11 @@ def main():
     print('Get optimizer and scheduler')
     # learning rate for FRN is very very sensitive !!!
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5 if args.frn else 3e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=3e-5 if args.frn else 3e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer=optimizer,
         T_max=args.num_epochs,
-        eta_min=3e-6 if args.frn else 1e-5,
+        eta_min=1e-6 if args.frn else 1e-5,
         last_epoch=-1
     )
 

@@ -269,23 +269,23 @@ class SENet(nn.Module):
             layer0_modules = [
                 ('conv1', nn.Conv2d(3, 64, 3, stride=2, padding=1,
                                     bias=False)),
-                ('bn1', nn.BatchNorm2d(64)),
-                ('relu1', nn.ReLU(inplace=True)),
+                ('frn1', FRN(num_features=64)),
+                ('tlu1', TLU(num_features=64)),
                 ('conv2', nn.Conv2d(64, 64, 3, stride=1, padding=1,
                                     bias=False)),
-                ('bn2', nn.BatchNorm2d(64)),
-                ('relu2', nn.ReLU(inplace=True)),
+                ('frn2', FRN(num_features=64)),
+                ('tlu2', TLU(num_features=64)),
                 ('conv3', nn.Conv2d(64, inplanes, 3, stride=1, padding=1,
                                     bias=False)),
-                ('bn3', nn.BatchNorm2d(inplanes)),
-                ('relu3', nn.ReLU(inplace=True)),
+                ('frn3', FRN(num_features=inplanes)),
+                ('tlu3', TLU(num_features=inplanes)),
             ]
         else:
             layer0_modules = [
                 ('conv1', nn.Conv2d(3, inplanes, kernel_size=7, stride=2,
                                     padding=3, bias=False)),
-                ('bn1', nn.BatchNorm2d(inplanes)),
-                ('relu1', nn.ReLU(inplace=True)),
+                ('frn1', FRN(num_features=inplanes)),
+                ('tlu1', TLU(num_features=inplanes)),
             ]
         # To preserve compatibility with Caffe weights `ceil_mode=True`
         # is used instead of `padding=1`.
