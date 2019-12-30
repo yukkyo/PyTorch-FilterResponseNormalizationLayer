@@ -6,9 +6,9 @@ PyTorch implementation of Filter Response Normalization Layer(FRN)
 
 ## 0. How to apply FRN to your model
 
-Add your own FRN and TLU.
-For now, it is difficult to change easily with functions.
-(Because many models use the same ReLU in various places.)
+Replace `BatchNorm2d + ReLU` in the model with `FRN + TLU` yourself.
+Currently, it is difficult to easily replace them with functions.
+Because many models use the same ReLU in various places.
 
 
 ## 1. Experiment(Classification)
